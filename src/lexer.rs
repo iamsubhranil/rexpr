@@ -1,4 +1,4 @@
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum TokenType {
     Number,
     Plus,
@@ -12,16 +12,24 @@ pub enum TokenType {
     Eof,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Token {
-    kind: TokenType,
-    start: usize,
-    length: usize,
+    pub kind: TokenType,
+    pub start: usize,
+    pub end: usize,
+}
+
+impl Token {
+    pub const DEFAULT_TOKEN: Token = Token {
+        kind: TokenType::Eof,
+        start: 0,
+        end: 0,
+    };
 }
 
 #[derive(Debug)]
 pub struct Lexer {
-    source: Vec<char>,
+    pub source: Vec<char>,
     pub tokens: Vec<Token>,
     start: usize,
     end: usize,
@@ -39,17 +47,20 @@ impl Lexer {
         }
     }
 
-    fn make_token(&mut self, t: TokenType) -> Option<&Token> {
+    fn make_token(&mut self, t: TokenType) -> Option<Token> {
         let token = Token {
             kind: t,
             start: self.start,
-            length: self.end - self.start,
+            end: self.end,
         };
+        /*
         self.tokens.push(token);
         self.tokens.last()
+        */
+        return Some(token);
     }
 
-    pub fn next_token(&mut self) -> Option<&Token> {
+    pub fn next_token(&mut self) -> Option<Token> {
         if self.end >= self.total {
             return self.make_token(TokenType::Eof);
         }
@@ -72,7 +83,7 @@ impl Lexer {
                 self.make_token(TokenType::Number)
             }
             ' ' | '\n' | '\r' => {
-                while self.source[self.end].is_whitespace() {
+                while self.end < self.total && self.source[self.end].is_whitespace() {
                     self.end += 1;
                 }
                 self.next_token()
@@ -84,6 +95,7 @@ impl Lexer {
         }
     }
 
+    #[allow(dead_code)]
     pub fn parse(&mut self) -> Result<bool, String> {
         while self.end < self.total - 1 {
             match self.next_token() {
