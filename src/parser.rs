@@ -55,6 +55,23 @@ impl<'a> Parser<'a> {
         self.advance();
     }
 
+    fn try_concat<F>(&mut self, concat: F, types: &[TokenType]) -> Node
+    where
+        F: Fn(&'_ mut Parser<'a>) -> Node,
+    {
+        let mut left = concat(self);
+        loop {
+            match self.peek_type(types) {
+                None => break,
+                Some(s) => {
+                    let right = concat(self);
+                    left = Node::Operator(Box::from(left), s.kind, Box::from(right));
+                }
+            }
+        }
+        return left;
+    }
+
     fn parse_term(&mut self) -> Node {
         match self.current.kind {
             TokenType::Number => {
@@ -79,59 +96,19 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_exp(&mut self) -> Node {
-        let mut t = self.parse_term();
-        loop {
-            match self.peek_type(&[TokenType::Cap]) {
-                None => break,
-                Some(s) => {
-                    let r = self.parse_term();
-                    t = Node::Operator(Box::from(t), s.kind, Box::from(r));
-                }
-            }
-        }
-        return t;
+        return self.try_concat(Parser::parse_term, &[TokenType::Cap]);
     }
 
     fn parse_fact(&mut self) -> Node {
-        let mut t = self.parse_exp();
-        loop {
-            match self.peek_type(&[TokenType::Star, TokenType::Backslash]) {
-                None => break,
-                Some(s) => {
-                    let r = self.parse_exp();
-                    t = Node::Operator(Box::from(t), s.kind, Box::from(r));
-                }
-            }
-        }
-        return t;
+        return self.try_concat(Parser::parse_exp, &[TokenType::Star, TokenType::Backslash]);
     }
 
     fn parse_sum(&mut self) -> Node {
-        let mut t = self.parse_fact();
-        loop {
-            match self.peek_type(&[TokenType::Plus, TokenType::Minus]) {
-                None => break,
-                Some(s) => {
-                    let r = self.parse_fact();
-                    t = Node::Operator(Box::from(t), s.kind, Box::from(r));
-                }
-            }
-        }
-        return t;
+        return self.try_concat(Parser::parse_fact, &[TokenType::Plus, TokenType::Minus]);
     }
 
     fn parse_mod(&mut self) -> Node {
-        let mut t = self.parse_sum();
-        loop {
-            match self.peek_type(&[TokenType::Percentage]) {
-                None => break,
-                Some(s) => {
-                    let r = self.parse_sum();
-                    t = Node::Operator(Box::from(t), s.kind, Box::from(r));
-                }
-            }
-        }
-        return t;
+        return self.try_concat(Parser::parse_sum, &[TokenType::Percentage]);
     }
 
     fn parse_expr(&mut self) -> Node {
