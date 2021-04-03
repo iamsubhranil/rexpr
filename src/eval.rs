@@ -1,20 +1,20 @@
 use crate::lexer::TokenType;
 use crate::parser::Node;
 
-pub fn eval(t: &Node) -> f64 {
-    match t {
-        Node::Literal(s) => *s,
-        Node::Operator(l, o, r) => {
-            let a = eval(l.as_ref());
-            let b = eval(r.as_ref());
-            match o {
-                TokenType::Plus => a + b,
-                TokenType::Minus => a - b,
-                TokenType::Star => a * b,
-                TokenType::Backslash => a / b,
-                TokenType::Cap => a.powf(b),
-                TokenType::Percentage => a % b,
-                _ => panic!("Invalid operator {:?}!", o),
+pub fn eval(tree: &Node) -> f64 {
+    match tree {
+        Node::Literal(val) => *val,
+        Node::Operator(left, operator, right) => {
+            let leftval = eval(left.as_ref());
+            let rightval = eval(right.as_ref());
+            match operator {
+                TokenType::Plus => leftval + rightval,
+                TokenType::Minus => leftval - rightval,
+                TokenType::Star => leftval * rightval,
+                TokenType::Backslash => leftval / rightval,
+                TokenType::Cap => leftval.powf(rightval),
+                TokenType::Percentage => leftval % rightval,
+                _ => panic!("Invalid operator {:?}!", operator),
             }
         }
     }
