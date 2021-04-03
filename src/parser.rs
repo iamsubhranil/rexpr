@@ -18,13 +18,13 @@ pub enum Node {
  *
  */
 
-pub struct Parser {
-    lex: Lexer,
+pub struct Parser<'a> {
+    lex: Lexer<'a>,
     current: Token,
     next: Token,
 }
 
-impl Parser {
+impl<'a> Parser<'a> {
     pub fn new(s: &String) -> Parser {
         Parser {
             lex: Lexer::new(s),
@@ -58,9 +58,7 @@ impl Parser {
     fn parse_term(&mut self) -> Node {
         match self.current.kind {
             TokenType::Number => {
-                let s: String = self.lex.source[self.current.start..self.current.end]
-                    .iter()
-                    .collect();
+                let s = self.lex.source[self.current.start..self.current.end].to_string();
                 self.advance();
                 Node::Literal(s.parse::<f64>().expect("Expected valid number!"))
             }
@@ -71,10 +69,11 @@ impl Parser {
                 s
             }
             _ => {
-                let s: String = self.lex.source[self.current.start..self.current.end]
-                    .iter()
-                    .collect();
-                panic!("Unexpected token '{}' at pos {}", s, self.current.start);
+                let s = self.lex.source[self.current.start..self.current.end].to_string();
+                panic!(
+                    "Unexpected token '{}'({:?}) at pos {}",
+                    s, self.current.kind, self.current.start
+                );
             }
         }
     }

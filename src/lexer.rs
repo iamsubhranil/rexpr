@@ -9,6 +9,7 @@ pub enum TokenType {
     Percentage,
     ParenOpen,
     ParenClose,
+
     Eof,
 }
 
@@ -28,22 +29,20 @@ impl Token {
 }
 
 #[derive(Debug)]
-pub struct Lexer {
-    pub source: Vec<char>,
-    pub tokens: Vec<Token>,
+pub struct Lexer<'a> {
+    pub source: String,
+    iter: std::iter::Peekable<std::str::Chars<'a>>,
     start: usize,
     end: usize,
-    total: usize,
 }
 
-impl Lexer {
+impl<'a> Lexer<'a> {
     pub fn new(s: &String) -> Lexer {
         Lexer {
-            source: s.chars().collect(),
-            tokens: vec![],
+            source: s.clone(),
+            iter: s.chars().into_iter().peekable(),
             start: 0,
             end: 0,
-            total: s.len(),
         }
     }
 
@@ -53,54 +52,58 @@ impl Lexer {
             start: self.start,
             end: self.end,
         };
-        /*
-        self.tokens.push(token);
-        self.tokens.last()
-        */
         return Some(token);
     }
 
     pub fn next_token(&mut self) -> Option<Token> {
-        if self.end >= self.total {
-            return self.make_token(TokenType::Eof);
-        }
-        self.start = self.end;
-        self.end += 1;
-        let i = self.source[self.start];
-        match i {
-            '+' => self.make_token(TokenType::Plus),
-            '-' => self.make_token(TokenType::Minus),
-            '*' => self.make_token(TokenType::Star),
-            '/' => self.make_token(TokenType::Backslash),
-            '^' => self.make_token(TokenType::Cap),
-            '%' => self.make_token(TokenType::Percentage),
-            '(' => self.make_token(TokenType::ParenOpen),
-            ')' => self.make_token(TokenType::ParenClose),
-            _ if i.is_numeric() => {
-                while self.source[self.end].is_numeric() {
-                    self.end += 1
+        if let Some(i) = self.iter.next() {
+            self.start = self.end;
+            self.end += 1;
+            match i {
+                '+' => self.make_token(TokenType::Plus),
+                '-' => self.make_token(TokenType::Minus),
+                '*' => self.make_token(TokenType::Star),
+                '/' => self.make_token(TokenType::Backslash),
+                '^' => self.make_token(TokenType::Cap),
+                '%' => self.make_token(TokenType::Percentage),
+                '(' => self.make_token(TokenType::ParenOpen),
+                ')' => self.make_token(TokenType::ParenClose),
+                _ if i.is_numeric() => {
+                    while let Some(j) = self.iter.peek() {
+                        if !j.is_numeric() && *j != '.' {
+                            break;
+                        }
+                        self.iter.next();
+                        self.end += 1;
+                    }
+
+                    self.make_token(TokenType::Number)
                 }
-                self.make_token(TokenType::Number)
-            }
-            ' ' | '\n' | '\r' => {
-                while self.end < self.total && self.source[self.end].is_whitespace() {
-                    self.end += 1;
+                ' ' | '\n' | '\r' => {
+                    while let Some(j) = self.iter.peek() {
+                        if !j.is_whitespace() {
+                            break;
+                        }
+                        self.iter.next();
+                        self.end += 1;
+                    }
+                    self.next_token()
                 }
-                self.next_token()
+                _ => {
+                    eprintln!("Unexpected char '{}'!", i);
+                    None
+                }
             }
-            _ => {
-                eprintln!("Unexpected char '{}'!", i);
-                None
-            }
+        } else {
+            self.make_token(TokenType::Eof)
         }
     }
 
     #[allow(dead_code)]
     pub fn parse(&mut self) -> Result<bool, String> {
-        while self.end < self.total - 1 {
-            match self.next_token() {
-                Some(_) => (),
-                None => return Err("Error occurred while scanning!".to_string()),
+        while let Some(i) = self.next_token() {
+            if i.kind == TokenType::Eof {
+                break;
             }
         }
         return Ok(true);
