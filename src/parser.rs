@@ -75,9 +75,12 @@ impl<'a> Parser<'a> {
     fn parse_term(&mut self) -> Node {
         match self.current.kind {
             TokenType::Number => {
+                let oldstart = self.current.start;
                 let s = self.lex.source[self.current.start..self.current.end].to_string();
                 self.advance();
-                Node::Literal(s.parse::<f64>().expect("Expected valid number!"))
+                Node::Literal(s.parse::<f64>().unwrap_or_else(|_| {
+                    panic!("Invalid decimal number '{}' at pos {}!", s, oldstart);
+                }))
             }
             TokenType::ParenOpen => {
                 self.advance();
@@ -116,7 +119,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse(&mut self) -> Node {
-        self.advance();
+        self.advance(); // init current and next
         self.advance();
         return self.parse_expr();
     }
