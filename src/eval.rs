@@ -20,7 +20,7 @@ pub fn eval(tree: &Node) -> f64 {
         Node::Function(func, args) => {
             let mut argvalues = vec![];
             for a in args {
-                argvalues.push(eval(a.as_ref()));
+                argvalues.push(eval(a));
             }
             match func {
                 TokenType::KeywordSin => argvalues[0].sin(),

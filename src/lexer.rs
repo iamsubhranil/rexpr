@@ -24,15 +24,15 @@ pub enum TokenType {
 
 impl TokenType {
     pub fn is_keyword(&self) -> bool {
-        match self {
+        matches!(
+            self,
             TokenType::KeywordSin
-            | TokenType::KeywordCos
-            | TokenType::KeywordTan
-            | TokenType::KeywordDegrees
-            | TokenType::KeywordRadians
-            | TokenType::KeywordAbs => true,
-            _ => false,
-        }
+                | TokenType::KeywordCos
+                | TokenType::KeywordTan
+                | TokenType::KeywordDegrees
+                | TokenType::KeywordRadians
+                | TokenType::KeywordAbs
+        )
     }
 
     pub fn arg_count(&self) -> i32 {
@@ -72,9 +72,9 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(s: &String) -> Lexer {
+    pub fn new(s: &str) -> Lexer {
         Lexer {
-            source: s.clone(),
+            source: s.to_string(),
             iter: s.chars().into_iter().peekable(),
             start: 0,
             end: 0,
@@ -82,12 +82,11 @@ impl<'a> Lexer<'a> {
     }
 
     fn make_token(&mut self, t: TokenType) -> Token {
-        let token = Token {
+        Token {
             kind: t,
             start: self.start,
             end: self.end,
-        };
-        return token;
+        }
     }
 
     fn has_keyword(s: &str) -> Option<TokenType> {
@@ -181,7 +180,7 @@ impl<'a> Lexer<'a> {
                 break;
             }
         }
-        return Ok(l);
+        Ok(l)
     }
 }
 
@@ -190,8 +189,7 @@ mod tests {
     use super::*;
 
     fn check_parse(source: &str, mut types: Vec<TokenType>) {
-        let s = source.to_string();
-        let mut l = Lexer::new(&s);
+        let mut l = Lexer::new(&source);
         let tokens = l.parse().unwrap();
         types.push(TokenType::Eof);
         let f = tokens.iter().zip(types.iter());

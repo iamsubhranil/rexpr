@@ -3,7 +3,7 @@ use crate::lexer::{Lexer, Token, TokenType};
 #[derive(Debug)]
 pub enum Node {
     Literal(f64),
-    Function(TokenType, Vec<Box<Node>>),
+    Function(TokenType, Vec<Node>),
     Operator(Box<Node>, TokenType, Box<Node>),
 }
 
@@ -26,7 +26,7 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(s: &String) -> Parser {
+    pub fn new(s: &str) -> Parser {
         Parser {
             lex: Lexer::new(s),
             current: Token::DEFAULT_TOKEN,
@@ -37,7 +37,7 @@ impl<'a> Parser<'a> {
     fn advance(&mut self) -> Token {
         self.current = self.next;
         self.next = self.lex.next_token();
-        return self.current;
+        self.current
     }
 
     fn peek_type(&mut self, t: &[TokenType]) -> Option<Token> {
@@ -46,7 +46,7 @@ impl<'a> Parser<'a> {
             self.advance();
             return Some(s);
         }
-        return None;
+        None
     }
 
     fn current_string(&self) -> String {
@@ -79,7 +79,7 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        return left;
+        left
     }
 
     fn parse_term(&mut self) -> Node {
@@ -105,10 +105,10 @@ impl<'a> Parser<'a> {
                 let n = t.arg_count();
                 let mut s = vec![];
                 if n > 0 {
-                    s.push(Box::from(self.parse_expr()));
+                    s.push(self.parse_expr());
                     for _ in 1..n {
                         self.expect(TokenType::Comma, "Expected ',' after argument!");
-                        s.push(Box::from(self.parse_expr()));
+                        s.push(self.parse_expr());
                     }
                 }
                 self.expect(TokenType::ParenClose, "Expected ')' after function call!");
@@ -129,31 +129,31 @@ impl<'a> Parser<'a> {
         match self.peek_type(&[TokenType::Cap]) {
             Some(s) => {
                 let right = self.parse_exp();
-                return Node::Operator(Box::from(left), s.kind, Box::from(right));
+                Node::Operator(Box::from(left), s.kind, Box::from(right))
             }
             None => left,
         }
     }
 
     fn parse_fact(&mut self) -> Node {
-        return self.try_concat(Parser::parse_exp, &[TokenType::Star, TokenType::Backslash]);
+        self.try_concat(Parser::parse_exp, &[TokenType::Star, TokenType::Backslash])
     }
 
     fn parse_sum(&mut self) -> Node {
-        return self.try_concat(Parser::parse_fact, &[TokenType::Plus, TokenType::Minus]);
+        self.try_concat(Parser::parse_fact, &[TokenType::Plus, TokenType::Minus])
     }
 
     fn parse_mod(&mut self) -> Node {
-        return self.try_concat(Parser::parse_sum, &[TokenType::Percentage]);
+        self.try_concat(Parser::parse_sum, &[TokenType::Percentage])
     }
 
     fn parse_expr(&mut self) -> Node {
-        return self.parse_mod();
+        self.parse_mod()
     }
 
     pub fn parse(&mut self) -> Node {
         self.advance(); // init current and next
         self.advance();
-        return self.parse_expr();
+        self.parse_expr()
     }
 }
