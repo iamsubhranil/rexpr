@@ -9,8 +9,42 @@ pub enum TokenType {
     Percentage,
     ParenOpen,
     ParenClose,
+    Comma,
+
+    KeywordSin,
+    KeywordCos,
+    KeywordTan,
+    KeywordDegrees,
+    KeywordRadians,
+    KeywordAbs,
 
     Eof,
+}
+
+impl TokenType {
+    pub fn is_keyword(&self) -> bool {
+        match self {
+            TokenType::KeywordSin
+            | TokenType::KeywordCos
+            | TokenType::KeywordTan
+            | TokenType::KeywordDegrees
+            | TokenType::KeywordRadians
+            | TokenType::KeywordAbs => true,
+            _ => false,
+        }
+    }
+
+    pub fn arg_count(&self) -> i32 {
+        match self {
+            TokenType::KeywordSin
+            | TokenType::KeywordCos
+            | TokenType::KeywordTan
+            | TokenType::KeywordDegrees
+            | TokenType::KeywordRadians
+            | TokenType::KeywordAbs => 1,
+            _ => 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -55,6 +89,31 @@ impl<'a> Lexer<'a> {
         return Some(token);
     }
 
+    fn has_keyword(s: &str) -> Option<TokenType> {
+        match s {
+            "sin" => Some(TokenType::KeywordSin),
+            "cos" => Some(TokenType::KeywordCos),
+            "tan" => Some(TokenType::KeywordTan),
+            "degrees" => Some(TokenType::KeywordDegrees),
+            "radians" => Some(TokenType::KeywordRadians),
+            "abs" => Some(TokenType::KeywordAbs),
+            _ => None,
+        }
+    }
+
+    fn make_identifier(&mut self) -> Option<Token> {
+        match Lexer::has_keyword(&self.source[self.start..self.end]) {
+            Some(s) => self.make_token(s),
+            None => {
+                eprintln!(
+                    "Unexpected identifier '{}'",
+                    self.source[self.start..self.end].to_string()
+                );
+                None
+            }
+        }
+    }
+
     pub fn next_token(&mut self) -> Option<Token> {
         if let Some(i) = self.iter.next() {
             self.start = self.end;
@@ -68,6 +127,7 @@ impl<'a> Lexer<'a> {
                 '%' => self.make_token(TokenType::Percentage),
                 '(' => self.make_token(TokenType::ParenOpen),
                 ')' => self.make_token(TokenType::ParenClose),
+                ',' => self.make_token(TokenType::Comma),
                 _ if i.is_numeric() => {
                     while let Some(j) = self.iter.peek() {
                         if !j.is_numeric() && *j != '.' {
@@ -78,6 +138,17 @@ impl<'a> Lexer<'a> {
                     }
 
                     self.make_token(TokenType::Number)
+                }
+                _ if i.is_alphabetic() => {
+                    while let Some(j) = self.iter.peek() {
+                        if !j.is_alphanumeric() && *j != '_' {
+                            break;
+                        }
+                        self.iter.next();
+                        self.end += 1;
+                    }
+
+                    self.make_identifier()
                 }
                 ' ' | '\n' | '\r' => {
                     while let Some(j) = self.iter.peek() {

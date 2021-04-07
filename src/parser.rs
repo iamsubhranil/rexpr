@@ -3,6 +3,7 @@ use crate::lexer::{Lexer, Token, TokenType};
 #[derive(Debug)]
 pub enum Node {
     Literal(f64),
+    Function(TokenType, Vec<Box<Node>>),
     Operator(Box<Node>, TokenType, Box<Node>),
 }
 
@@ -48,9 +49,18 @@ impl<'a> Parser<'a> {
         return None;
     }
 
+    fn current_string(&self) -> String {
+        self.lex.source[self.current.start..self.current.end].to_string()
+    }
+
     fn expect(&mut self, t: TokenType, err: &str) {
         if self.current.kind != t {
-            panic!("{}", err);
+            panic!(
+                "{}, Received: '{}' ({:?})!",
+                err,
+                self.current_string(),
+                self.current.kind
+            );
         }
         self.advance();
     }
@@ -76,7 +86,7 @@ impl<'a> Parser<'a> {
         match self.current.kind {
             TokenType::Number => {
                 let oldstart = self.current.start;
-                let s = self.lex.source[self.current.start..self.current.end].to_string();
+                let s = self.current_string();
                 self.advance();
                 Node::Literal(s.parse::<f64>().unwrap_or_else(|_| {
                     panic!("Invalid decimal number '{}' at pos {}!", s, oldstart);
@@ -88,8 +98,24 @@ impl<'a> Parser<'a> {
                 self.expect(TokenType::ParenClose, "Expected ')'!");
                 s
             }
+            _ if self.current.kind.is_keyword() => {
+                let t = self.current.kind;
+                self.advance();
+                self.expect(TokenType::ParenOpen, "Expected '(' after function call!");
+                let n = t.arg_count();
+                let mut s = vec![];
+                if n > 0 {
+                    s.push(Box::from(self.parse_expr()));
+                    for _ in 1..n {
+                        self.expect(TokenType::Comma, "Expected ',' after argument!");
+                        s.push(Box::from(self.parse_expr()));
+                    }
+                }
+                self.expect(TokenType::ParenClose, "Expected ')' after function call!");
+                Node::Function(t, s)
+            }
             _ => {
-                let s = self.lex.source[self.current.start..self.current.end].to_string();
+                let s = self.current_string();
                 panic!(
                     "Unexpected token '{}'({:?}) at pos {}",
                     s, self.current.kind, self.current.start
