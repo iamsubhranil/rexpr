@@ -125,7 +125,14 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_exp(&mut self) -> Node {
-        return self.try_concat(Parser::parse_term, &[TokenType::Cap]);
+        let left = self.parse_term();
+        match self.peek_type(&[TokenType::Cap]) {
+            Some(s) => {
+                let right = self.parse_exp();
+                return Node::Operator(Box::from(left), s.kind, Box::from(right));
+            }
+            None => left,
+        }
     }
 
     fn parse_fact(&mut self) -> Node {
