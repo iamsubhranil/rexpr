@@ -18,6 +18,7 @@ pub enum TokenType {
     KeywordRadians,
     KeywordAbs,
 
+    Error,
     Eof,
 }
 
@@ -80,13 +81,13 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn make_token(&mut self, t: TokenType) -> Option<Token> {
+    fn make_token(&mut self, t: TokenType) -> Token {
         let token = Token {
             kind: t,
             start: self.start,
             end: self.end,
         };
-        return Some(token);
+        return token;
     }
 
     fn has_keyword(s: &str) -> Option<TokenType> {
@@ -101,7 +102,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn make_identifier(&mut self) -> Option<Token> {
+    fn make_identifier(&mut self) -> Token {
         match Lexer::has_keyword(&self.source[self.start..self.end]) {
             Some(s) => self.make_token(s),
             None => {
@@ -109,12 +110,12 @@ impl<'a> Lexer<'a> {
                     "Unexpected identifier '{}'",
                     self.source[self.start..self.end].to_string()
                 );
-                None
+                self.make_token(TokenType::Error)
             }
         }
     }
 
-    pub fn next_token(&mut self) -> Option<Token> {
+    pub fn next_token(&mut self) -> Token {
         if let Some(i) = self.iter.next() {
             self.start = self.end;
             self.end += 1;
@@ -162,7 +163,7 @@ impl<'a> Lexer<'a> {
                 }
                 _ => {
                     eprintln!("Unexpected char '{}'!", i);
-                    None
+                    self.make_token(TokenType::Error)
                 }
             }
         } else {
@@ -171,12 +172,80 @@ impl<'a> Lexer<'a> {
     }
 
     #[allow(dead_code)]
-    pub fn parse(&mut self) -> Result<bool, String> {
-        while let Some(i) = self.next_token() {
+    pub fn parse(&mut self) -> Result<Vec<Token>, String> {
+        let mut l = vec![];
+        loop {
+            let i = self.next_token();
+            l.push(i);
             if i.kind == TokenType::Eof {
                 break;
             }
         }
-        return Ok(true);
+        return Ok(l);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn check_parse(source: &str, mut types: Vec<TokenType>) {
+        let s = source.to_string();
+        let mut l = Lexer::new(&s);
+        let tokens = l.parse().unwrap();
+        types.push(TokenType::Eof);
+        let f = tokens.iter().zip(types.iter());
+        for it in f {
+            let (a, b) = it;
+            assert_eq!(a.kind, *b);
+        }
+    }
+
+    #[test]
+    fn number() {
+        check_parse(
+            "1 1.23 0.1231 99388128 1.2.21",
+            vec![
+                TokenType::Number,
+                TokenType::Number,
+                TokenType::Number,
+                TokenType::Number,
+                TokenType::Number,
+            ],
+        );
+    }
+
+    #[test]
+    fn operator_and_keywords() {
+        check_parse(
+            "(sin+-cos*/tan^)abs",
+            vec![
+                TokenType::ParenOpen,
+                TokenType::KeywordSin,
+                TokenType::Plus,
+                TokenType::Minus,
+                TokenType::KeywordCos,
+                TokenType::Star,
+                TokenType::Backslash,
+                TokenType::KeywordTan,
+                TokenType::Cap,
+                TokenType::ParenClose,
+                TokenType::KeywordAbs,
+            ],
+        );
+    }
+
+    #[test]
+    fn wrong_keywords() {
+        check_parse(
+            "sincos costan sintan absabc tan",
+            vec![
+                TokenType::Error,
+                TokenType::Error,
+                TokenType::Error,
+                TokenType::Error,
+                TokenType::KeywordTan,
+            ],
+        );
     }
 }

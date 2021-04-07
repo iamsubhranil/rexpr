@@ -36,7 +36,7 @@ impl<'a> Parser<'a> {
 
     fn advance(&mut self) -> Token {
         self.current = self.next;
-        self.next = self.lex.next_token().unwrap();
+        self.next = self.lex.next_token();
         return self.current;
     }
 
