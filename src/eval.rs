@@ -18,10 +18,7 @@ pub fn eval(tree: &Node) -> f64 {
             }
         }
         Node::Function(func, args) => {
-            let mut argvalues = vec![];
-            for a in args {
-                argvalues.push(eval(a));
-            }
+            let argvalues = args.iter().map(|a| eval(a)).collect::<Vec<f64>>();
             match func {
                 TokenType::KeywordSin => argvalues[0].sin(),
                 TokenType::KeywordCos => argvalues[0].cos(),
