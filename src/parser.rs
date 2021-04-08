@@ -1,6 +1,6 @@
 use crate::lexer::{Lexer, Token, TokenType};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Node {
     Literal(f64),
     Function(TokenType, Vec<Node>),
@@ -155,5 +155,63 @@ impl<'a> Parser<'a> {
         self.advance(); // init current and next
         self.advance();
         self.parse_expr()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn expect_eq(s1: &str, s2: &str) {
+        let r1 = Parser::new(s1).parse();
+        let r2 = Parser::new(s2).parse();
+        assert_eq!(r1, r2);
+    }
+
+    fn expect_neq(s1: &str, s2: &str) {
+        let r1 = Parser::new(s1).parse();
+        let r2 = Parser::new(s2).parse();
+        assert_ne!(r1, r2);
+    }
+
+    fn expect_err(s1: &str) {
+        let res = std::panic::catch_unwind(|| Parser::new(s1).parse());
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn associativity() {
+        expect_eq("1 + 2 + 3", "(1 + 2) + 3");
+        expect_eq("1 + 2 - 3", "(1 + 2) - 3");
+        expect_eq("1 * 2 / 3", "(1 * 2) / 3");
+        expect_eq("1 ^ 2 ^ 3", "1 ^ (2 ^ 3)");
+        expect_eq("sin(1 + 2 + 3)", "sin((1 + 2) + 3)");
+    }
+
+    #[test]
+    fn precedence() {
+        expect_eq("1 + 2 - 3", "(1 + 2) - 3");
+        expect_neq("1 + 2 * 3", "(1 + 2) * 3");
+        expect_eq("1 + 2 * 3", "1 + (2 * 3)");
+        expect_neq("1 / 2 - 3", "1 / (2 - 3)");
+        expect_eq("1 / 2 - 3", "(1 / 2) - 3)");
+        expect_neq("1 + 2 - 3 * 4 ^ 5", "(1 + 2) - (3  * 4) ^ 5");
+        expect_eq("1 + 2 - 3 * 4 ^ 5", "(1 + 2) - (3  * (4 ^ 5))");
+        expect_eq("1 + 2 + sin(1000)", "((1 + 2) + sin(1000))");
+    }
+
+    #[test]
+    fn invalid_input() {
+        expect_err("1 +");
+        expect_err("+");
+        expect_err("((1 + 2)");
+        expect_err("hello!");
+        expect_err("sin(100, 200, 300)");
+        expect_err("cos");
+        expect_err("cos(100");
+        expect_err("23 * 46 /");
+        expect_err("1.2.3");
+        expect_err("cos(100 200)");
+        expect_err("sin ^ cos");
     }
 }
