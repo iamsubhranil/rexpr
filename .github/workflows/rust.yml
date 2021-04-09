@@ -1,6 +1,6 @@
 on: [push, pull_request]
 
-name: Check, Test, Fmt and Clippy
+name: CI
 
 jobs:
   check:
