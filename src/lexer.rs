@@ -1,3 +1,5 @@
+use crate::builtin::Builtin;
+
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum TokenType {
     Number,
@@ -11,41 +13,10 @@ pub enum TokenType {
     ParenClose,
     Comma,
 
-    KeywordSin,
-    KeywordCos,
-    KeywordTan,
-    KeywordDegrees,
-    KeywordRadians,
-    KeywordAbs,
+    Builtin(usize),
 
     Error,
     Eof,
-}
-
-impl TokenType {
-    pub fn is_keyword(&self) -> bool {
-        matches!(
-            self,
-            TokenType::KeywordSin
-                | TokenType::KeywordCos
-                | TokenType::KeywordTan
-                | TokenType::KeywordDegrees
-                | TokenType::KeywordRadians
-                | TokenType::KeywordAbs
-        )
-    }
-
-    pub fn arg_count(&self) -> i32 {
-        match self {
-            TokenType::KeywordSin
-            | TokenType::KeywordCos
-            | TokenType::KeywordTan
-            | TokenType::KeywordDegrees
-            | TokenType::KeywordRadians
-            | TokenType::KeywordAbs => 1,
-            _ => 0,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -90,14 +61,10 @@ impl<'a> Lexer<'a> {
     }
 
     fn has_keyword(s: &str) -> Option<TokenType> {
-        match s {
-            "sin" => Some(TokenType::KeywordSin),
-            "cos" => Some(TokenType::KeywordCos),
-            "tan" => Some(TokenType::KeywordTan),
-            "degrees" => Some(TokenType::KeywordDegrees),
-            "radians" => Some(TokenType::KeywordRadians),
-            "abs" => Some(TokenType::KeywordAbs),
-            _ => None,
+        let f = Builtin::has_builtin(s);
+        match f {
+            Some(s) => Some(TokenType::Builtin(s)),
+            None => None,
         }
     }
 
@@ -185,10 +152,10 @@ impl<'a> Lexer<'a> {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
 
-    fn check_parse(source: &str, mut types: Vec<TokenType>) {
+    pub fn check_parse(source: &str, mut types: Vec<TokenType>) {
         let mut l = Lexer::new(&source);
         let tokens = l.parse().unwrap();
         types.push(TokenType::Eof);
@@ -214,35 +181,19 @@ mod tests {
     }
 
     #[test]
-    fn operator_and_keywords() {
+    fn operators_and_tokens() {
         check_parse(
-            "(sin+-cos*/tan^)abs",
+            "(+-*/^)%,",
             vec![
                 TokenType::ParenOpen,
-                TokenType::KeywordSin,
                 TokenType::Plus,
                 TokenType::Minus,
-                TokenType::KeywordCos,
                 TokenType::Star,
                 TokenType::Backslash,
-                TokenType::KeywordTan,
                 TokenType::Cap,
                 TokenType::ParenClose,
-                TokenType::KeywordAbs,
-            ],
-        );
-    }
-
-    #[test]
-    fn wrong_keywords() {
-        check_parse(
-            "sincos costan sintan absabc tan",
-            vec![
-                TokenType::Error,
-                TokenType::Error,
-                TokenType::Error,
-                TokenType::Error,
-                TokenType::KeywordTan,
+                TokenType::Percentage,
+                TokenType::Comma,
             ],
         );
     }

@@ -1,3 +1,4 @@
+use crate::builtin::Builtin;
 use crate::lexer::{Lexer, Token, TokenType};
 
 #[derive(Debug, PartialEq)]
@@ -98,11 +99,14 @@ impl<'a> Parser<'a> {
                 self.expect(TokenType::ParenClose, "Expected ')'!");
                 s
             }
-            _ if self.current.kind.is_keyword() => {
+            TokenType::Builtin(idx) => {
                 let t = self.current.kind;
                 self.advance();
-                self.expect(TokenType::ParenOpen, "Expected '(' after function call!");
-                let n = t.arg_count();
+                self.expect(
+                    TokenType::ParenOpen,
+                    "Expected '(' after builtin function call!",
+                );
+                let n = Builtin::arg_count(idx);
                 let mut s = vec![];
                 if n > 0 {
                     s.push(self.parse_expr());
@@ -111,7 +115,10 @@ impl<'a> Parser<'a> {
                         s.push(self.parse_expr());
                     }
                 }
-                self.expect(TokenType::ParenClose, "Expected ')' after function call!");
+                self.expect(
+                    TokenType::ParenClose,
+                    "Expected ')' after builtin function call!",
+                );
                 Node::Function(t, s)
             }
             _ => {
@@ -159,22 +166,22 @@ impl<'a> Parser<'a> {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
 
-    fn expect_eq(s1: &str, s2: &str) {
+    pub fn expect_eq(s1: &str, s2: &str) {
         let r1 = Parser::new(s1).parse();
         let r2 = Parser::new(s2).parse();
         assert_eq!(r1, r2);
     }
 
-    fn expect_neq(s1: &str, s2: &str) {
+    pub fn expect_neq(s1: &str, s2: &str) {
         let r1 = Parser::new(s1).parse();
         let r2 = Parser::new(s2).parse();
         assert_ne!(r1, r2);
     }
 
-    fn expect_err(s1: &str) {
+    pub fn expect_err(s1: &str) {
         let res = std::panic::catch_unwind(|| Parser::new(s1).parse());
         assert!(res.is_err());
     }
@@ -206,7 +213,6 @@ mod tests {
         expect_err("+");
         expect_err("((1 + 2)");
         expect_err("hello!");
-        expect_err("sin(100, 200, 300)");
         expect_err("cos");
         expect_err("cos(100");
         expect_err("23 * 46 /");
